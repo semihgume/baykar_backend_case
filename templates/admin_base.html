@@ -1,0 +1,109 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="shortcut icon" type="image/png" href="{% static 'assets/img/favicon.png' %}" >
+    <link href="{% static 'css/styles.css' %}"  rel="stylesheet" />
+    <link href="{% static 'css/jquery.dataTables.min.css' %}" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>{% block title %}Dashboard{% endblock %}</title>
+</head>
+<body class="sb-nav-fixed">
+    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+        <a class="navbar-brand ps-3" href="#" style="font-size: 20px">BAYKAR TEKNOLOJİ</a>
+        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" href="#!"><i class="fas fa-bars"></i></button>
+        <ul class="navbar-nav ms-auto me-3 me-lg-4">
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-user fa-fw"></i></a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                    <li><button class="dropdown-item" onclick="logout()">Logout</button></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+    <div id="layoutSidenav">
+        <div id="layoutSidenav_nav">
+            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
+                <div class="sb-sidenav-menu">
+                    <div class="nav">
+                        <a class="nav-link" href="{% url 'dashboard' %}">
+                            <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
+                            DASHBOARD
+                        </a>
+                        <a class="nav-link" href="{% url 'dashboard-uavs' %}">
+                            <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
+                            İHALAR
+                        </a>
+                        <a class="nav-link" href="{% url 'dashboard-rented-uavs' %}">
+                            <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
+                            KİRALANAN İHALAR
+                        </a>
+                    </div>
+                </div>
+                <div class="sb-sidenav-footer">
+                    <div class="small">
+                        <h6 id="loggedUser"></h6>
+                    </div>
+                </div>
+            </nav>
+        </div>
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{% static 'js/scripts.js' %}"></script>
+    <script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'js/jquery.dataTables.min.js' %}"></script>
+    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+
+        $(document).ready(function () {
+            getCurrentUserData();
+        });
+
+        function logout() {
+            const token = localStorage.getItem("Token");
+            $.ajax({
+                url : "{% url 'api-logout' %}",
+                type: "POST",
+                headers: { "Authorization": "Token " + token },
+                success: function(data, status) {
+                    if(data.message === "Successfully logged out." && status === "success") {
+                        alert("Çıkış yapıldı!");
+                        localStorage.removeItem("Token");
+                        window.location.replace({% url 'admin-login' %});
+                    }
+                },
+                error: function (data, error) {
+                    alert("Error!");
+                    console.error("Error:", error);
+                }
+            });
+        }
+
+        function getCurrentUserData() {
+            $.ajax({
+                url: "/api/current-user/",
+                type: "GET",
+                headers: { "Authorization": "Token " + token },
+                success: function (data, status) {
+                    if(data && status === "success") {
+                        $('#loggedUser').text("Logged in as: " + data.username);
+                    }
+                },
+                error: function (error) {
+                    alert("Error!");
+                    console.error("Error: ", error);
+                }
+            });
+        }
+
+    </script>
+
+    {% block extra_script %}{% endblock %}
+</body>
+</html>

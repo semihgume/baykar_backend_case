@@ -1,0 +1,17 @@
+{% extends 'admin_base.html' %}
+
+{% block title %} Dashboard {% endblock %}
+
+{% block content %}
+    <div id="layoutSidenav_content">
+        <main>
+            <h1>Dashboard Content</h1>
+        </main>
+    </div>
+{% endblock %}
+
+{% block extra_script %}
+    <script>
+        const token = localStorage.getItem("Token");
+    </script>
+{% endblock %}

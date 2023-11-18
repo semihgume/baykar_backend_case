@@ -1,0 +1,277 @@
+{% extends 'admin_base.html' %}
+
+{% block title %} Dashboard - Kiralanan İHA'lar {% endblock %}
+
+{% block content %}
+    <div id="layoutSidenav_content">
+        <main>
+            <div class="card mx-5 my-5">
+                  <div class="card-header">
+                    <div class="float-start">
+                        <h3>KİRALANAN İHALAR</h3>
+                    </div>
+                  </div>
+                <div class="card-body">
+                   <table id="rentedTable" class="display" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User ID</th>
+                                <th>IHA ID</th>
+                                <th>Kiralayan Kullanıcı</th>
+                                <th>İHA</th>
+                                <th>Başlangıç Tarihi</th>
+                                <th>Bitiş Tarihi</th>
+                                <th>Ödenen Ücret</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+            <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="editModalLabel">Düzenle</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                      <div class="form-group m-2">
+                        <label for="edit_user">Kiralayan Kullanıcı:</label>
+                          <select class="form-control" id="edit_user" name="edit_user"><option disabled>Kullanıcı Seçiniz...</option></select>
+                      </div>
+                      <div class="form-group m-2">
+                        <label for="edit_iha">İHA:</label>
+                        <select class="form-control" id="edit_iha" name="edit_iha"><option disabled>İHA Seçiniz...</option></select>
+                      </div>
+                      <div class="form-group m-2">
+                        <label for="edit_start_date">Başlangıç Tarihi:</label>
+                        <input type="datetime-local" class="form-control" id="edit_start_date" name="edit_start_date" required>
+                      </div>
+
+                      <div class="form-group m-2">
+                        <label for="edit_end_date">Bitiş Tarihi:</label>
+                        <input type="datetime-local" class="form-control" id="edit_end_date" name="edit_end_date" required>
+                      </div>
+
+                      <div class="form-group m-2">
+                        <label for="edit_wage">Ödenen Ücret:</label>
+                        <input type="number" class="form-control" id="edit_wage" name="edit_wage" required>
+                      </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-primary" name="tempName" onclick="editRentedIHA(this.id)">Kaydet</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </main>
+    </div>
+{% endblock %}
+
+{% block extra_script %}
+    <script>
+        const token = localStorage.getItem("Token");
+
+        $(document).ready(function () {
+            $('#editModal').on('hidden.bs.modal', function (e) {
+                let userOption = new Option("Kullanıcı seçiniz...");
+                let ihaOption = new Option("İHA seçiniz...");
+                userOption.disabled = true;
+                ihaOption.disabled = true;
+                $("#edit_user").empty().append(userOption);
+                $("#edit_iha").empty().append(ihaOption);
+                $(".modal-body input").val("");
+            });
+
+            $('#rentedTable').DataTable({
+                "serverSide": true,
+                "ajax": {
+                    url: '/api/rented-iha/?format=datatables',
+                    headers: { "Authorization": "Token " + token }
+                },
+                "columns": [
+                    {"data": "id"},
+                    {"data": "user"},
+                    {"data": "iha"},
+                    {"data": "user_info"},
+                    {"data": "iha_info"},
+                    {"data": "start_date"},
+                    {"data": "end_date"},
+                    {"data": "wage"},
+                    {
+                        "render": function (data, type, row) {
+                             return '<button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editModal" onclick="getData(' + row.id + ')">Düzenle</button>' +
+                                 '&nbsp;&nbsp' + '<button type="button" class="btn btn-danger" onclick="deleteRentedIHA(' + row.id + ')">Sil</button>';
+                        }
+                    }
+                ],
+                "columnDefs": [
+                    { "targets": [0,1,2], "visible": false, "searchable": false },
+                    { "targets": 8, "searchable": false, "orderable": false },
+                    { "targets": [5 ,6],
+                      "render": function (data) {
+                          let date = new Date(data);
+                          var formattedDate = date.toLocaleString();
+                          return formattedDate;
+                      }
+                    },
+                    { "targets": 7,
+                      "render": function (data) {
+                          let formattedData = parseFloat(data).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                          return formattedData;
+                      }
+                    },
+                    { "className": "dt-head-center", targets: [0,1,2,3,4,5,6,7,8]},
+                    { "className": "dt-body-center", targets: [0,1,2,3,4,5,6,7,8]}
+                ]
+            });
+        });
+
+        function getData(id) {
+            getUserData();
+            getIHAData();
+
+            $.ajax({
+                url : "/api/rented-iha/" + id + "/",
+                type: "GET",
+                headers: { "Authorization": "Token " + token },
+                success: function(data, status) {
+                    if(status === "success") {
+                        $('#edit_user').val(data.user).change();
+                        $('#edit_iha').val(data.iha).change();
+                        $('#edit_wage').val(data.wage);
+                        let start_date = new Date(data.start_date);
+                        start_date = start_date.toISOString().slice(0, 16);
+                        $('#edit_start_date').val(start_date);
+                        let end_date = new Date(data.end_date);
+                        end_date = end_date.toISOString().slice(0, 16);
+                        $('#edit_end_date').val(end_date);
+                        $('button[name="tempName"]').attr('id', id);
+                    } else {
+                        alert("Error!");
+                    }
+                },
+                error: function (error) {
+                    alert("Error!");
+                    console.error("Error:", error);
+                }
+            });
+        }
+
+        function editRentedIHA(id) {
+            let user = $('#edit_user').val();
+            let iha = $('#edit_iha').val();
+            let start_date = $('#edit_start_date').val();
+            let end_date = $('#edit_end_date').val();
+            let wage = $('#edit_wage').val();
+
+            if(user && iha && start_date && end_date && wage) {
+                if (wage >= 0) {
+                    if(id) {
+                        $.ajax({
+                            url: "/api/rented-iha/" + id + "/",
+                            type: "PUT",
+                            headers: { "Authorization": "Token " + token },
+                            data: {
+                                "user": user,
+                                "iha": iha,
+                                "start_date": start_date,
+                                "end_date": end_date,
+                                "wage": wage
+                            },
+                            success: function (data, status){
+                                if(status === "success") {
+                                    alert("Kiralanan İHA başarıyla başarıyla kaydedildi!");
+                                    $('#editModal').modal('hide');
+                                    $('#rentedTable').DataTable().clear().draw();
+                                } else {
+                                    alert("Error!");
+                                }
+                            },
+                            error: function (error) {
+                                alert("Error!");
+                                console.error("Error:", error);
+                            }
+                        })
+                    } else {
+                        alert("ID bulunamadı!");
+                    }
+                } else {
+                    alert("Ödenen ücret 0'dan küçük olamaz!")
+                }
+            } else {
+                alert("Lütfen tüm alanları doldurun!");
+            }
+        }
+
+        function deleteRentedIHA(id){
+            if(id) {
+                $.ajax({
+                    url : "/api/rented-iha/" + id + "/",
+                    type: "DELETE",
+                    headers: { "Authorization": "Token " + token },
+                    success: function() {
+                        alert("Kiralama işlemi başarıyla silindi!");
+                        $('#rentedTable').DataTable().clear().draw();
+                    },
+                    error: function (error) {
+                        alert("Error!");
+                        console.error("Error", error);
+                    }
+                });
+            } else {
+                alert("ID bulunamadı!");
+            }
+        }
+
+        function getUserData() {
+            $.ajax({
+                url : "/api/get-users/",
+                type: "GET",
+                headers: { "Authorization": "Token " + token },
+                success: function(data, status) {
+                    if (data && status === "success") {
+                        const options = data.results.map(item =>
+                            $('<option>', {
+                                text: `${item.first_name} ${item.last_name}`,
+                                value: item.id
+                            })
+                        );
+                        $('#edit_user').append(options);
+                    }
+                },
+                error: function (error) {
+                    alert("Error!");
+                    console.error("Error:", error);
+                }
+            });
+        }
+
+        function getIHAData() {
+            $.ajax({
+                url : "/api/iha/",
+                type: "GET",
+                headers: { "Authorization": "Token " + token },
+                success: function(data, status) {
+                    if(data && status === "success") {
+                        const options = data.results.map(item =>
+                            $('<option>', {
+                                text: `${item.brand} ${item.model}`,
+                                value: item.id
+                            })
+                        );
+                        $('#edit_iha').append(options);
+                    }
+                },
+                error: function (error) {
+                    alert("Error!");
+                    console.error("Error:", error);
+                }
+            });
+        }
+
+    </script>
+{% endblock %}

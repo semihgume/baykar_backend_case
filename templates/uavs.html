@@ -1,0 +1,286 @@
+{% extends 'admin_base.html' %}
+
+{% block title %} Dashboard - İHA'lar {% endblock %}
+
+{% block content %}
+    <div id="layoutSidenav_content">
+        <main>
+            <div class="card mx-5 my-5">
+                  <div class="card-header">
+                    <div class="float-start">
+                        <h3>İHALAR</h3>
+                    </div>
+                    <div class="float-end">
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#newModal">İHA Ekle</button>
+                    </div>
+                  </div>
+                <div class="card-body">
+                    <table id="ihaTable" class="display" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Marka</th>
+                                <th>Model</th>
+                                <th>Kategori</th>
+                                <th>Ağırlık</th>
+                                <th>Saatlik Ücret</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+            <div class="modal fade" id="newModal" tabindex="-1" aria-labelledby="newModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="newModalLabel">İHA Ekle</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                      <div class="form-group m-2">
+                        <label for="brand">Marka:</label>
+                        <input type="text" class="form-control" id="brand" name="brand" required>
+                      </div>
+                      <div class="form-group m-2">
+                        <label for="model">Model:</label>
+                        <input type="text" class="form-control" id="model" name="model" required>
+                      </div>
+                      <div class="form-group m-2">
+                        <label for="category">Kategori:</label>
+                        <input type="text" class="form-control" id="category" name="category" required>
+                      </div>
+
+                      <div class="form-group m-2">
+                        <label for="weight">Ağırlık:</label>
+                        <input type="number" class="form-control" id="weight" name="weight" required>
+                      </div>
+
+                      <div class="form-group m-2">
+                        <label for="hourly_wage">Saatlik Ücret:</label>
+                        <input type="number" class="form-control" id="hourly_wage" name="hourly_wage" required>
+                      </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-primary" onclick="createIHA()">Kaydet</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="editModalLabel">İHA'yı Düzenle</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                      <div class="form-group m-2">
+                        <label for="edit_brand">Marka:</label>
+                        <input type="text" class="form-control" id="edit_brand" name="edit_brand" required>
+                      </div>
+                      <div class="form-group m-2">
+                        <label for="edit_model">Model:</label>
+                        <input type="text" class="form-control" id="edit_model" name="edit_model" required>
+                      </div>
+                      <div class="form-group m-2">
+                        <label for="edit_category">Kategori:</label>
+                        <input type="text" class="form-control" id="edit_category" name="edit_category" required>
+                      </div>
+
+                      <div class="form-group m-2">
+                        <label for="edit_weight">Ağırlık:</label>
+                        <input type="number" class="form-control" id="edit_weight" name="edit_weight" required>
+                      </div>
+
+                      <div class="form-group m-2">
+                        <label for="edit_hourly_wage">Saatlik Ücret:</label>
+                        <input type="number" class="form-control" id="edit_hourly_wage" name="edit_hourly_wage" required>
+                      </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-primary" name="tempName" onclick="editIHA(this.id)">Kaydet</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </main>
+    </div>
+{% endblock %}
+
+{% block extra_script %}
+    <script>
+        const token = localStorage.getItem("Token");
+        $(document).ready(function () {
+            $('#ihaTable').DataTable({
+                "serverSide": true,
+                "ajax": {
+                    url: '/api/iha/?format=datatables',
+                    headers: { "Authorization": "Token " + token }
+                },
+                "columns": [
+                    {"data": "id"},
+                    {"data": "brand"},
+                    {"data": "model"},
+                    {"data": "category"},
+                    {"data": "weight"},
+                    {"data": "hourly_wage"},
+                    {
+                        "render": function (data, type, row) {
+                             return '<button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editModal" onclick="getData(' + row.id + ')">Düzenle</button>' +
+                                 '&nbsp;&nbsp' + '<button type="button" class="btn btn-danger" onclick="deleteIHA(' + row.id + ')">Sil</button>';
+                        }
+                    }
+                ],
+                "columnDefs": [
+                    { "targets": 0, "visible": false, "searchable": false },
+                    { "targets": 6, "searchable": false, "orderable": false },
+                    { "targets": 5,
+                      "render": function (data) {
+                          let formattedData = parseFloat(data).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                          return formattedData;
+                      }
+                    },
+                    { "className": "dt-head-center", targets: [0,1,2,3,4,5,6]},
+                    { "className": "dt-body-center", targets: [0,1,2,3,4,5,6]}
+                ]
+            });
+        });
+
+        function createIHA() {
+            let brand = $('#brand').val();
+            let model = $('#model').val();
+            let category = $('#category').val();
+            let weight = $('#weight').val();
+            let hourly_wage = $('#hourly_wage').val();
+
+            if(brand && model && category && weight && hourly_wage) {
+                if(weight < 0 || hourly_wage < 0 ) {
+                    alert("Ağırlık veya saatlik ücret 0'dan küçük olamaz!");
+                } else {
+                    $.ajax({
+                        url: "/api/iha/",
+                        type: "POST",
+                        headers: { "Authorization": "Token " + token },
+                        data: {
+                            "brand": brand,
+                            "model": model,
+                            "category": category,
+                            "weight": weight,
+                            "hourly_wage": hourly_wage
+                        },
+                        success: function (data, status) {
+                            if(status === "success") {
+                                alert("İHA başarıyla kaydedildi!");
+                                $('#newModal').modal('hide');
+                                $(".modal-body input").val("")
+                                $('#ihaTable').DataTable().clear().draw();
+                            } else {
+                                alert("Error!");
+                            }
+                        },
+                        error: function (error) {
+                            alert("Error!");
+                            console.error("Error", error);
+                        }
+                    });
+                }
+            } else {
+                alert("Lütfen tüm alanları doldurunuz!");
+            }
+        }
+
+        function getData(id) {
+            if(id) {
+                $.ajax({
+                    url : "/api/iha/" + id + "/",
+                    type: "GET",
+                    headers: { "Authorization": "Token " + token },
+                    success: function(data, status) {
+                        if(status === "success") {
+                            $('#edit_brand').val(data.brand);
+                            $('#edit_model').val(data.model);
+                            $('#edit_category').val(data.category);
+                            $('#edit_weight').val(data.weight);
+                            $('#edit_hourly_wage').val(data.hourly_wage);
+                            $('button[name="tempName"]').attr('id', id);
+                        }
+                    },
+                    error: function (data) {
+                        console.log(data);
+                    }
+                });
+            } else {
+                alert("ID bulunamadı!");
+            }
+        }
+
+        function editIHA(id) {
+            let brand = $('#edit_brand').val();
+            let model = $('#edit_model').val();
+            let category = $('#edit_category').val();
+            let weight = $('#edit_weight').val();
+            let hourly_wage = $('#edit_hourly_wage').val();
+
+            if(brand && model && category && weight && hourly_wage) {
+                if(weight < 0 || hourly_wage < 0 ) {
+                    alert("Ağırlık veya saatlik ücret 0'dan küçük olamaz!");
+                } else {
+                    if(id) {
+                        $.ajax({
+                            url: "/api/iha/" + id + "/",
+                            type: "PUT",
+                            headers: { "Authorization": "Token " + token },
+                            data: {
+                                "brand": brand,
+                                "model": model,
+                                "category": category,
+                                "weight": weight,
+                                "hourly_wage": hourly_wage
+                            },
+                            success: function (data, status) {
+                                if(status === "success") {
+                                    alert("İHA başarıyla kaydedildi!");
+                                    $('#editModal').modal('hide');
+                                    $('#ihaTable').DataTable().clear().draw();
+                                } else {
+                                    alert("Error!");
+                                }
+                            },
+                            error: function (error) {
+                                alert("Error!")
+                                console.error("Error:", error);
+                            }
+                        });
+                    } else {
+                        alert("ID Bulunamadı!");
+                    }
+                }
+            } else {
+                alert("Lütfen tüm alanları doldurunuz!");
+            }
+        }
+
+        function deleteIHA(id) {
+            if(id) {
+                $.ajax({
+                    url : "/api/iha/" + id + "/",
+                    type: "DELETE",
+                    headers: { "Authorization": "Token " + token },
+                    success: function(data, status) {
+                        alert("İHA başarıyla silindi!");
+                        $('#ihaTable').DataTable().clear().draw();
+                    },
+                    error: function (error) {
+                        alert("Error!");
+                        console.error("Error", error);
+                    }
+                });
+            } else {
+                alert("Error!");
+            }
+        }
+    </script>
+{% endblock %}

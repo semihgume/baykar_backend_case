@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %} Baykar Teknoloji - Profil {% endblock %}
+
+{% block content %}
+    <nav class="navbar navbar-expand-lg navbar-light bg-primary">
+        <div class="container">
+        <a class="navbar-brand" href="{% url 'homepage' %}">
+            <img src="https://cdn.baykartech.com/media/images/contents/Baykar-Logo.svg" alt="Baykar Logo">
+        </a>
+            <div class="navbar-nav ml-auto">
+                <a class="nav-item nav-link m-1 btn" href="{% url 'homepage' %}" style="font-size: 20px; color: white">Kiralık İHA'lar</a>
+                <button class="nav-item nav-link m-1 btn" style="font-size: 20px; color: white" onclick="logout()">Çıkış</button>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-5">
+        <table id="myIhas" class="display" style="width:100%">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User ID</th>
+                    <th>IHA ID</th>
+                    <th>Kiralayan Kullanıcı</th>
+                    <th>İHA</th>
+                    <th>Başlangıç Tarihi</th>
+                    <th>Bitiş Tarihi</th>
+                    <th>Ödenen Ücret</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <input type="hidden" id="currentUserID" value="">
+{% endblock %}
+
+{% block extra_script %}
+    <script>
+
+        const token = localStorage.getItem("Token");
+
+        $(document).ready(function () {
+
+            getCurrentUserData()
+
+            $('#myIhas').DataTable({
+                "serverSide": true,
+                "ajax": {
+                    url: '/api/rented-iha/?format=datatables',
+                    headers: { "Authorization": "Token " + token },
+                    data: { "for_user": true}
+                },
+                "columns": [
+                    {"data": "id"},
+                    {"data": "user"},
+                    {"data": "iha"},
+                    {"data": "user_info"},
+                    {"data": "iha_info"},
+                    {"data": "start_date"},
+                    {"data": "end_date"},
+                    {"data": "wage"},
+                    {
+                        "render": function (data, type, row) {
+                             return '<button type="button" class="btn btn-danger" onclick="deleteIHA(' + row.id + ')">Kiralamayı Bitir</button>';
+
+                        }
+                    }
+                ],
+                "columnDefs": [
+                    { "targets": [0,1,2,3], "visible": false, "searchable": false },
+                    { "targets": 8, "searchable": false, "orderable": false },
+                    { "targets": [5 ,6],
+                      "render": function (data, type, row) {
+                          let date = new Date(data);
+                          var formattedDate = date.toLocaleString();
+                          return formattedDate;
+                      }
+                    },
+                    { "targets": 7,
+                      "render": function (data) {
+                          let formattedData = parseFloat(data).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                          return formattedData;
+                      }
+                    },
+                    { "className": "dt-head-center", targets: [0,1,2,3,4,5,6,7,8]},
+                    { "className": "dt-body-center", targets: [0,1,2,3,4,5,6,7,8]}
+                ]
+            });
+
+        });
+
+        function deleteIHA(id){
+            if(id) {
+                $.ajax({
+                    url : "/api/rented-iha/" + id + "/",
+                    type: "DELETE",
+                    headers: { "Authorization": "Token " + token },
+                    success: function() {
+                        alert("Kiralama işlemi başarıyla bitirildi!");
+                        $('#myIhas').DataTable().clear().draw();
+                    },
+                    error: function (error) {
+                        alert("Error!");
+                        console.error("Error", error);
+                    }
+                });
+            } else {
+                alert("ID bulunamadı!");
+            }
+        }
+
+        function getCurrentUserData() {
+            $.ajax({
+                url: "/api/current-user/",
+                type: "GET",
+                headers: { "Authorization": "Token " + token },
+                success: function (data, status) {
+                    if(data && status === "success") {
+                        $('#currentUserID').val(data.id);
+                    }
+                },
+                error: function (error) {
+                    alert("Error!");
+                    console.error("Error: ", error);
+                }
+            });
+        }
+
+        function logout() {
+            $.ajax({
+                url : "{% url 'api-logout' %}",
+                type: "POST",
+                headers: { "Authorization": "Token " + token },
+                success: function(data, status) {
+                    if(data.message === "Successfully logged out." && status === "success") {
+                        alert("Çıkış yapıldı!");
+                        localStorage.removeItem("Token");
+                        window.location.replace({% url 'login' %});
+                    }
+                },
+                error: function (data, error) {
+                    alert("Error!");
+                    console.error("Error:", error);
+                }
+            });
+        }
+
+    </script>
+{% endblock %}
